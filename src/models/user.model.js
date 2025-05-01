@@ -1,14 +1,13 @@
 import mongoose, { Schema } from "mongoose";
 const userSchema = new Schema(
-  {
-    Avatar: {
+  { avatar: {
       type: {
-        url: String,
-        localpath: String,
+        url: {type: String},
+        localpath: {type: String},
       },
       default: {
         url: `https://placehold.co/600x400`,
-        localpath: "",
+        localpath: " ",
       },
     },
     username: {
@@ -20,7 +19,7 @@ const userSchema = new Schema(
     },
     email: {
       type: String,
-      reuquired: true,
+      required: true,
       unique: true,
       lowercase: true,
       trim: true,
@@ -37,18 +36,11 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    forgotPasswordExpiry: {
-      type: Date,
-    },
-    refreshToken: {
-      type: String,
-    },
-    emailVerificationToken: {
-      type: String,
-    },
-    emailVerificationExpiry: {
-      type: Date,
-    },
+    forgotPasswordExpiry:  Date,
+    refreshToken: String,
+    emailVerificationToken:  String,
+    emailVerificationExpiry: Date,
   },
   { timestamps: true },
 );
+export default mongoose.model("User" ,  userSchema)

@@ -1,7 +1,8 @@
 import Mailgen from "mailgen";
 import nodemailer from "nodemailer";
+import { ApiError } from "./api-error.js";
 
-const sendEmail = async (options) => {
+export const sendEmail = async (options) => {
   const mailGenerator = new Mailgen({
     theme: "default",
     product: {
@@ -9,12 +10,10 @@ const sendEmail = async (options) => {
       link: "https://taskmanager.app",
     },
   });
-
   // visit https://github.com/eladnava/mailgen#readme
-
-  const emailTextual = mailGenerator.generatePlaintext(options.mailgenContent);
-
+  const emailText = mailGenerator.generatePlaintext(options.mailgenContent);
   const emailHtml = mailGenerator.generate(options.mailgenContent);
+
   const transporter = nodemailer.createTransport({
     host: process.env.MAILTRAP_SMTP_HOST,
     port: process.env.MAILTRAP_SMTP_PORT,
@@ -25,11 +24,11 @@ const sendEmail = async (options) => {
   });
 
   const mail = {
-    from: "mail.taskmanager@example.com", 
-    to: options.email, 
-    subject: options.subject, 
-    text: emailTextual, 
-    html: emailHtml, 
+    from: "mail.taskmanager@example.com",
+    to: options.email,
+    subject: options.subject,
+    text: emailText,
+    html: emailHtml,
   };
 
   try {
@@ -38,37 +37,35 @@ const sendEmail = async (options) => {
     console.error(
       "Email service failed silently. Make sure you have provided your MAILTRAP credentials in the .env file",
     );
-    console.error("Error: ", error);
+    throw new ApiError("email could be sent", 500);
   }
 };
 
-
-const emailVerificationMailgenContent = (username, verificationUrl) => {
+export const emailVerificationMailgenContent = (username, verificationUrl) => {
   return {
     body: {
       name: username,
-      intro: "Welcome to our app! We're very excited to have you on board.",
+      intro:
+        "Welcome to Task Manager! We're very excited to have you on board.",
       action: {
         instructions:
-          "To verify your email please click on the following button:",
+          "To get started with Task Manager, please verify your email address by clicking the button below:",
         button: {
-          color: "#22BC66", 
+          color: "#22BC66",
           text: "Verify your email",
           link: verificationUrl,
         },
       },
-      outro:
-        "Need help, or have questions? Just reply to this email, we'd love to help.",
+      outro: "If you did not create an account, no further action is required.",
     },
   };
 };
 
-
-const forgotPasswordMailgenContent = (username, passwordResetUrl) => {
+export const forgotPasswordMailgenContent = (username, passwordResetUrl) => {
   return {
     body: {
       name: username,
-      intro: "We got a request to reset the password of our account",
+      intro: "You have requested to reset your password.",
       action: {
         instructions:
           "To reset your password click on the following button or link:",
@@ -79,13 +76,7 @@ const forgotPasswordMailgenContent = (username, passwordResetUrl) => {
         },
       },
       outro:
-        "Need help, or have questions? Just reply to this email, we'd love to help.",
+        "If you did not request a password reset, please ignore this email.",
     },
   };
-};
-
-export {
-  emailVerificationMailgenContent,
-  forgotPasswordMailgenContent,
-  sendEmail,
 };

@@ -1,12 +1,15 @@
 import express from "express"
+import cookieParser from "cookie-parser";
+import healthCheckRouter from "./routes/healthcheck.route.js"
 
 const app = express();
 
-// import all the routes here 
+app.use(cookieParser());
+app.use(express.json());
 
-import router from  "./routes/healthcheck.route"
 
-app.use("/api/v1/healthcheck", router)
+
+app.use("/api/v1/healthcheck", healthCheckRouter)
 
 
 export default app;
