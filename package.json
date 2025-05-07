@@ -13,7 +13,8 @@
     "mongoose": "^8.13.1",
     "nodemailer": "^6.10.1",
     "nodemon": "^3.1.10",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "zod": "^3.24.3"
   },
   "name": "mega_project",
   "version": "1.0.0",
