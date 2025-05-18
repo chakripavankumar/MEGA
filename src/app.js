@@ -10,6 +10,7 @@ app.use(express.json());
 
 
 app.use("/api/v1/healthcheck", healthCheckRouter)
+app.use("/api/v1/auth" , )
 
 
 export default app;

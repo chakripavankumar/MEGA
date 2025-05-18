@@ -5,6 +5,7 @@ import { ApiResponce } from "../utils/api-responce.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
+// REGISTER USER
 const registerUser = asyncHandler(async (req, res) => {
   try {
     const { email, fullname, username, password } = req.body;
@@ -12,16 +13,12 @@ const registerUser = asyncHandler(async (req, res) => {
     if (userExists) {
       throw new ApiError(400, "User already exists");
     }
-
     const newUser = await User.create({ email, fullname, username, password });
-
     const token = crypto.randomBytes(32).toString("hex");
     newUser.emailVerificationToken = token;
-    newUser.emailVerificationTokenExpiry = Date.now() + 1000 * 60 * 60 * 24;
+    newUser.emailVerificationTokenExpiry = Date.now() + 1000 * 60 * 60 * 24; // 24h
     await newUser.save();
-
     await sendVerificationEmail(newUser.email, token);
-
     return res.status(201).json(
       new ApiResponce(
         201,
@@ -41,7 +38,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Internal server error while registering user");
   }
 });
-
+// VERIFY EMAIL
 const verifyEmail = asyncHandler(async (req, res) => {
   try {
     const { token } = req.params;
@@ -60,7 +57,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
       new ApiResponce(
         201,
         {
-          user: { username: newUser.username },
+          user: { username: user.username},
         },
         "Email verified successfully",
       ),
@@ -70,6 +67,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Error Email verification");
   }
 });
+// LOGIN USER
 const loginUser = asyncHandler(async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -86,7 +84,7 @@ const loginUser = asyncHandler(async (req, res) => {
         201,
         {
           user: {
-            username: newUser.username,
+            username: user.username
           },
         },
         "User loggedin successfully.",
@@ -97,6 +95,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Invalid crrendtials");
   }
 });
+// LOGOUT USER
 const logOutUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.User._id);
   if (!user) {
@@ -110,14 +109,13 @@ const logOutUser = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponce(200, null, "user successfully logged out"));
 });
+// SEND VERIFICATION MAIL
 const resendEmailVerification = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) throw new Error("Email is required");
-
   const user = await User.findOne({ email });
   if (!user) throw new Error("User not found");
   if (user.isEmailVerified) throw new Error("Email already verified");
-
   const token = crypto.randomBytes(32).toString("hex");
   user.emailVerificationToken = crypto
     .createHash("sha256")
@@ -135,8 +133,9 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponce(200, null, "email reset email sent successfully"));
 });
+// FORGET PASSWORD
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
-  const email = req.body;
+  const { email } = req.body
   const user = await User.findOne({ email });
   if (!user) throw new ApiError(400, "User already exists");
   const token = crypto.randomBytes(32).toString("hex");
@@ -159,7 +158,6 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
 const resetForgottenPassword = asyncHandler(async (req, res) => {
   const { token, newPassword } = req.body;
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
   const user = await User.findOne({
     forgotPasswordToken: hashedToken,
     forgotPasswordExpiry: { $gt: Date.now() },
@@ -173,21 +171,19 @@ const resetForgottenPassword = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponce(200, null, "update password sucessfully"));
 });
+// CHANGE REFRESH TOKEN
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies;
   if (!refreshToken) throw new ApiError("400", "ther's no refreshToken");
-
   const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
   const user = await User.findById(decoded._id);
   if (!user || user.refreshToken !== refreshToken)
     throw new ApiError(200, "somehting went wrong");
-
   const newAccessToken = user.generateAccessTokens();
   const newRefreshToken = user.genrateRefreshToken();
-
   user.refreshToken = newRefreshToken;
-  await User.save();
-  res.cookie("accessTokem", newAccessToken, {
+  await user.save()
+  res.cookie("accessToken", newAccessToken, {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
@@ -203,11 +199,11 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       new ApiResponce("201", null, "generated refreshAccessToken sucessfully"),
     );
 });
-
+// CHANGE CURRENT PASSWORD
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   const user = await User.findById(req.user._id);
-  const isMatch = await User.isPasswordCorrect(oldPassword);
+  const isMatch = await user.isPasswordCorrect(oldPassword);
   if (!isMatch) throw new Error("Old password is incorrect");
 
   user.password = newPassword;
@@ -216,6 +212,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponce("201", null, "Password updated successfully"));
 });
+// USER INFO
 const getCurrentUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select(
     "-password -refreshToken",
