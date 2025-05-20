@@ -1,6 +1,8 @@
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { AvaiableUserRoles, UserRoleEnum } from "../utils/constant.js";
 const userSchema = new Schema(
   {
     avatar: {
@@ -41,7 +43,6 @@ const userSchema = new Schema(
     },
     forgotPasswordExpiry: {
       type: Date,
-      expires: 60 * 60 * 2,
     },
     forgotPasswordToken: {
       type: String,
@@ -54,12 +55,17 @@ const userSchema = new Schema(
     },
     emailVerificationTokenExpiry: {
       type: Date,
-      expires: 60 * 60 * 24,
+    },
+    role: {
+      type: String,
+      enum: AvaiableUserRoles,
+      default: UserRoleEnum.MEMBER,
+      required: true,
     },
   },
+
   { timestamps: true },
 );
- 
 // to save to db when modified is changed ( hashing is an  expensive ops)
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
@@ -70,7 +76,7 @@ userSchema.pre("save", async function (next) {
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
-userSchema.methods.generateAccessTokens = function () {
+userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
       _id: this._id,
@@ -88,11 +94,17 @@ userSchema.methods.genrateRefreshToken = function () {
   return jwt.sign(
     {
       _id: this._id,
-      email: this.email,
       username: this.username,
     },
     process.env.REFRESH_TOKEN_SECRET,
     { expiresIn: "30d" },
   );
+};
+userSchema.methods.generateTemporaryToken = async function () {
+  const unHashedToken = crypto.randomBytes(32).toString("hex");
+  const hashedToken = crypto.createHash("sha256").update(unHashedToken).digest("hex");
+  const tokenExpiry = Date.now() + 30 * 60 * 1000;
+
+  return {hashedToken ,unHashedToken,tokenExpiry};
 };
 export default mongoose.model("User", userSchema);

@@ -3,6 +3,9 @@ import nodemailer from "nodemailer";
 import { ApiError } from "./api-error.js";
 
 export const sendEmail = async (options) => {
+  if (!options.mailgenContent) {
+    throw new ApiError(500, "Missing email content (mailgenContent)");
+  }
   const mailGenerator = new Mailgen({
     theme: "default",
     product: {
@@ -10,10 +13,8 @@ export const sendEmail = async (options) => {
       link: "https://taskmanager.app",
     },
   });
-  // visit https://github.com/eladnava/mailgen#readme
   const emailText = mailGenerator.generatePlaintext(options.mailgenContent);
   const emailHtml = mailGenerator.generate(options.mailgenContent);
-
   const transporter = nodemailer.createTransport({
     host: process.env.MAILTRAP_SMTP_HOST,
     port: process.env.MAILTRAP_SMTP_PORT,
@@ -22,7 +23,6 @@ export const sendEmail = async (options) => {
       pass: process.env.MAILTRAP_SMTP_PASS,
     },
   });
-
   const mail = {
     from: "mail.taskmanager@example.com",
     to: options.email,
@@ -30,7 +30,6 @@ export const sendEmail = async (options) => {
     text: emailText,
     html: emailHtml,
   };
-
   try {
     await transporter.sendMail(mail);
   } catch (error) {
@@ -40,7 +39,6 @@ export const sendEmail = async (options) => {
     throw new ApiError("email could be sent", 500);
   }
 };
-
 export const emailVerificationMailgenContent = (username, verificationUrl) => {
   return {
     body: {

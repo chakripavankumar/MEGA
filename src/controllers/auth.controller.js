@@ -2,37 +2,63 @@ import { asyncHandler } from "../utils/async-handler.js";
 import User from "../models/user.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponce } from "../utils/api-responce.js";
+import { emailVerificationMailgenContent, sendEmail } from "../utils/mail.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 // REGISTER USER
 const registerUser = asyncHandler(async (req, res) => {
+  const { email, fullname, username, password , role} = req.body;
+  if (!fullname || !email || !password || !username || !role) {
+    throw new ApiError(400, "All fields are required");
+  }
   try {
-    const { email, fullname, username, password } = req.body;
-    const userExists = await User.findOne({ email });
-    if (userExists) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       throw new ApiError(400, "User already exists");
     }
-    const newUser = await User.create({ email, fullname, username, password });
-    const token = crypto.randomBytes(32).toString("hex");
-    newUser.emailVerificationToken = token;
-    newUser.emailVerificationTokenExpiry = Date.now() + 1000 * 60 * 60 * 24; // 24h
-    await newUser.save();
-    await sendVerificationEmail(newUser.email, token);
-    return res.status(201).json(
-      new ApiResponce(
-        201,
-        {
-          user: {
-            _id: newUser._id,
-            username: newUser.username,
-            email: newUser.email,
-            role: newUser.role,
-          },
-        },
-        "User registered successfully. Please check your email to verify your account",
-      ),
-    );
+    const newUser = await User.create({ fullname, email,  username, password, role });
+    if (!newUser) {
+      throw new ApiError(400, "User not created");
+    } else {
+      const { hashedToken, unHashedToken, tokenExpiry } =
+      await newUser.generateTemporaryToken();
+      newUser.emailVerificationToken = hashedToken;
+      newUser.emailVerificationTokenExpiry = tokenExpiry;
+      await newUser.save();
+      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${unHashedToken}`;
+      const mailGenContent = emailVerificationMailgenContent(
+        newUser.fullname,
+        verificationUrl,
+      );
+      try {
+        await sendEmail({
+          email: newUser.email,
+          subject: "Verify your email address",
+          mailgenContent: mailGenContent
+        });
+        return res.status(201).json(
+          new ApiResponce(
+            201,
+            {
+              user: {
+                _id: newUser._id,
+                name: newUser.fullname,
+                email: newUser.email,
+                role: newUser.role,
+              },
+            },
+            "User registered successfully. Please check your email to verify your account.",
+          ),
+        );
+      } catch (error) {
+        console.error("Error sending verification email:", error);
+        throw new ApiError(
+          500,
+          "Internal server error while sending verification email",
+        );
+      }
+    }
   } catch (error) {
     console.error("Error registering user:", error);
     throw new ApiError(500, "Internal server error while registering user");
@@ -57,7 +83,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
       new ApiResponce(
         201,
         {
-          user: { username: user.username},
+          user: { username: user.username },
         },
         "Email verified successfully",
       ),
@@ -84,7 +110,7 @@ const loginUser = asyncHandler(async (req, res) => {
         201,
         {
           user: {
-            username: user.username
+            username: user.username,
           },
         },
         "User loggedin successfully.",
@@ -135,7 +161,7 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
 });
 // FORGET PASSWORD
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
-  const { email } = req.body
+  const { email } = req.body;
   const user = await User.findOne({ email });
   if (!user) throw new ApiError(400, "User already exists");
   const token = crypto.randomBytes(32).toString("hex");
@@ -182,7 +208,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   const newAccessToken = user.generateAccessTokens();
   const newRefreshToken = user.genrateRefreshToken();
   user.refreshToken = newRefreshToken;
-  await user.save()
+  await user.save();
   res.cookie("accessToken", newAccessToken, {
     httpOnly: true,
     secure: true,

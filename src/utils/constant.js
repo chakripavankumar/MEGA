@@ -4,11 +4,18 @@ export const UserRoleEnum = {
   MEMBER: "member",
 };
 export const AvaiableUserRoles = Object.values(UserRoleEnum);
-
 export const TaskStatusEnum = {
-  TODO :  "todo",
+  TODO : "todo",
+  PRIORITY: "priority",
   IN_PROGRESS: "in_progress",
+  IN_REVIEW: "in_review",
+  CANCELLED: "cancelled",
   DONE: " done",
 };
-
 export const AvaiableTaskStatus = Object.values(TaskStatusEnum);
+export const TaskPrioritiesEnum = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+};
+export const AvaiableTaskPrioriorties = Object.values(TaskPrioritiesEnum);
