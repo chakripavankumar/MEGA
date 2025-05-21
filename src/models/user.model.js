@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { AvaiableUserRoles, UserRoleEnum } from "../utils/constant.js";
+
 const userSchema = new Schema(
   {
     avatar: {
@@ -50,12 +51,21 @@ const userSchema = new Schema(
     refreshToken: {
       type: String,
     },
+    refreshTokenExpiry:{
+     type:String,
+    },
     emailVerificationToken: {
       type: String,
     },
     emailVerificationTokenExpiry: {
       type: Date,
     },
+    passwordResetToken:{
+      type:String,
+    },
+   passwordResetTokenExpiry : {
+    type:Date
+   },
     role: {
       type: String,
       enum: AvaiableUserRoles,
